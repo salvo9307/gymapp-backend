@@ -1,0 +1,52 @@
+package com.salvatore.gymapp.repository;
+
+import com.salvatore.gymapp.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    List<User> findAllByGymIdAndRole_Name(Long gymId, String roleName);
+
+    List<User> findByGymIdAndRole_NameOrderByLastNameAscFirstNameAsc(Long gymId, String roleName);
+
+    long countByGymIdAndRole_Name(Long gymId, String roleName);
+
+    long countByRole_Name(String roleName);
+
+    Optional<User> findFirstByGymIdAndRole_Name(Long gymId, String roleName);
+
+    @Query("""
+    select u
+    from User u
+    left join fetch u.role
+    left join fetch u.gym
+    where u.email = :email
+""")
+    Optional<User> findByEmailWithRoleAndGym(@Param("email") String email);
+
+    @Query("""
+        select u
+        from User u
+        where u.gym.id = :gymId
+          and u.role.name = 'USER'
+          and (
+               lower(u.firstName) like lower(concat('%', :search, '%'))
+            or lower(u.lastName) like lower(concat('%', :search, '%'))
+            or lower(u.email) like lower(concat('%', :search, '%'))
+          )
+    """)
+    Page<User> searchGymUsers(@Param("gymId") Long gymId,
+                              @Param("search") String search,
+                              Pageable pageable);
+}
