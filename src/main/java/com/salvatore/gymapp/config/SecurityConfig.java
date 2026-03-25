@@ -39,7 +39,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-
                         .requestMatchers(HttpMethod.POST, "/api/admin/exercises").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers(HttpMethod.GET, "/api/admin/exercises/**").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -47,7 +46,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/user/**").hasRole("USER")
                         .requestMatchers("/api/app/**").hasRole("USER")
                         .requestMatchers("/api/catalog/**").hasAnyRole("ADMIN", "MANAGER")
-
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
@@ -55,25 +53,25 @@ public class SecurityConfig {
                             response.setStatus(401);
                             response.setContentType("application/json");
                             response.setCharacterEncoding("UTF-8");
-                            response.getWriter().write("""
-            {
-              "status": 401,
-              "error": "Unauthorized",
-              "message": "Non autenticato"
-            }
-            """);
+                            response.getWriter().write(
+                                    "{\n" +
+                                            "  \"status\": 401,\n" +
+                                            "  \"error\": \"Unauthorized\",\n" +
+                                            "  \"message\": \"Non autenticato\"\n" +
+                                            "}"
+                            );
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setStatus(403);
                             response.setContentType("application/json");
                             response.setCharacterEncoding("UTF-8");
-                            response.getWriter().write("""
-            {
-              "status": 403,
-              "error": "Forbidden",
-              "message": "Accesso negato"
-            }
-            """);
+                            response.getWriter().write(
+                                    "{\n" +
+                                            "  \"status\": 403,\n" +
+                                            "  \"error\": \"Forbidden\",\n" +
+                                            "  \"message\": \"Accesso negato\"\n" +
+                                            "}"
+                            );
                         })
                 )
                 .authenticationProvider(authenticationProvider())
@@ -84,7 +82,6 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
         configuration.setAllowedOrigins(List.of("http://localhost:4200"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
