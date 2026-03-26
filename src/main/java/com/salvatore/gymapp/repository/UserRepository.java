@@ -12,6 +12,9 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
+    @Query("select u from User u left join fetch u.gym where u.id = :id")
+    Optional<User> findByIdWithGym(@Param("id") Long id);
+
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);

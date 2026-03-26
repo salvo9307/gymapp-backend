@@ -32,7 +32,7 @@ public class ManagerDashboardService {
                 currentUser.getUsername(),
                 currentUser.getRole());
 
-        User manager = userRepository.findById(currentUser.getId())
+        User manager = userRepository.findByIdWithGym(currentUser.getId())
                 .orElseThrow(() -> new NotFoundException("Utente non trovato"));
 
         log.info("Manager trovato: id={}, email={}", manager.getId(), manager.getEmail());
@@ -84,30 +84,16 @@ public class ManagerDashboardService {
         }
 
         long expiredUsersCount = totalUsers - activeSubscriptionsCount;
+        long usersWithActivePlan = workoutPlanRepository.countDistinctUsersWithActivePlanByGymId(gymId);
+        long usersWithoutActivePlan = totalUsers - usersWithActivePlan;
+        long totalExercises = exerciseRepository.countByGymId(gymId);
+
         log.info("activeSubscriptionsCount={}", activeSubscriptionsCount);
         log.info("expiringUsersCount={}", expiringUsersCount);
         log.info("expiredUsersCount={}", expiredUsersCount);
-
-        long usersWithActivePlan;
-        try {
-            usersWithActivePlan = workoutPlanRepository.countDistinctUsersWithActivePlanByGymId(gymId);
-            log.info("usersWithActivePlan={}", usersWithActivePlan);
-        } catch (Exception e) {
-            log.error("Errore countDistinctUsersWithActivePlanByGymId per gymId={}", gymId, e);
-            throw e;
-        }
-
-        long usersWithoutActivePlan = totalUsers - usersWithActivePlan;
+        log.info("usersWithActivePlan={}", usersWithActivePlan);
         log.info("usersWithoutActivePlan={}", usersWithoutActivePlan);
-
-        long totalExercises;
-        try {
-            totalExercises = exerciseRepository.countByGymId(gymId);
-            log.info("totalExercises={}", totalExercises);
-        } catch (Exception e) {
-            log.error("Errore countByGymId per gymId={}", gymId, e);
-            throw e;
-        }
+        log.info("totalExercises={}", totalExercises);
 
         ManagerDashboardResponse response = new ManagerDashboardResponse(
                 gymId,
