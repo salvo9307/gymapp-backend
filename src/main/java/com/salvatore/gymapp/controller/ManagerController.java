@@ -61,11 +61,6 @@ public class ManagerController {
     @GetMapping("/dashboard")
     public ManagerDashboardResponse getDashboard(
             @AuthenticationPrincipal CustomUserPrincipal currentUser) {
-
-        System.out.println("DEBUG currentUser id: " + currentUser.getId());
-        System.out.println("DEBUG currentUser email: " + currentUser.getUsername());
-        System.out.println("DEBUG currentUser role: " + currentUser.getRole());
-
         return managerDashboardService.getDashboard(currentUser);
     }
 
