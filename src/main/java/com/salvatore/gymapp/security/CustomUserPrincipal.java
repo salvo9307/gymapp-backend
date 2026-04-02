@@ -19,20 +19,17 @@ public class CustomUserPrincipal implements UserDetails {
     private final boolean active;
     private final boolean gymActive;
     private final Long gymId;
+    private final boolean mustChangePassword;
 
     public CustomUserPrincipal(User user) {
         this.id = user.getId();
-        this.email = user.getEmail();
+        this.email = user.getEmailBackup();
         this.password = user.getPasswordHash();
         this.role = user.getRole().getName();
         this.active = user.isActive();
         this.gymId = user.getGym() != null ? user.getGym().getId() : null;
-
-        if (user.getGym() == null) {
-            this.gymActive = true;
-        } else {
-            this.gymActive = user.getGym().isActive();
-        }
+        this.mustChangePassword = user.isMustChangePassword();
+        this.gymActive = user.getGym() == null || user.getGym().isActive();
     }
 
     @Override
@@ -41,13 +38,13 @@ public class CustomUserPrincipal implements UserDetails {
     }
 
     @Override
-    public String getPassword() {
-        return password;
+    public String getUsername() {
+        return email;
     }
 
     @Override
-    public String getUsername() {
-        return email;
+    public String getPassword() {
+        return password;
     }
 
     @Override
@@ -67,18 +64,6 @@ public class CustomUserPrincipal implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        if ("ADMIN".equals(role)) {
-            return active;
-        }
-
-        if ("MANAGER".equals(role)) {
-            return active && gymActive;
-        }
-
-        if ("USER".equals(role)) {
-            return gymActive;
-        }
-
-        return false;
+        return active && gymActive;
     }
 }

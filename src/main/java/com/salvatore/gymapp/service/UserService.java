@@ -1,6 +1,12 @@
 package com.salvatore.gymapp.service;
 
-import com.salvatore.gymapp.dto.auth.*;
+import com.salvatore.gymapp.dto.auth.CreateManagedUserRequest;
+import com.salvatore.gymapp.dto.auth.CreateUserRequest;
+import com.salvatore.gymapp.dto.auth.PagedResponse;
+import com.salvatore.gymapp.dto.auth.ResetUserPasswordRequest;
+import com.salvatore.gymapp.dto.auth.UpdateUserStatusRequest;
+import com.salvatore.gymapp.dto.auth.UserDetailResponse;
+import com.salvatore.gymapp.dto.auth.UserSummaryResponse;
 import com.salvatore.gymapp.entity.Gym;
 import com.salvatore.gymapp.entity.Role;
 import com.salvatore.gymapp.entity.User;
@@ -23,6 +29,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -35,17 +42,16 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final WorkoutPlanRepository workoutPlanRepository;
     private final SubscriptionService subscriptionService;
-
+    private final CryptoService cryptoService;
 
     public User createUser(CreateUserRequest request) {
-
-        String email = request.getEmail().trim();
+        String email = normalizeEmail(request.getEmail());
 
         if (userRepository.existsByEmailHash(EmailHashUtils.sha256(email))) {
             throw new ConflictException("Email già presente");
         }
 
-        Role role = roleRepository.findByName(request.getRole().toUpperCase())
+        Role role = roleRepository.findByName(request.getRole().trim().toUpperCase())
                 .orElseThrow(() -> new BadRequestException("Ruolo non valido"));
 
         Gym gym = null;
@@ -55,14 +61,19 @@ public class UserService {
         }
 
         User user = new User();
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        user.setEmail(request.getEmail());
-        user.setEmailHash(EmailHashUtils.sha256(request.getEmail()));
+        user.setFirstName(normalizeText(request.getFirstName()));
+        user.setLastName(normalizeText(request.getLastName()));
+        user.setEmailHash(EmailHashUtils.sha256(email));
+        user.setEmailEnc(cryptoService.encrypt(email));
+        user.setEmailBackup(email);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(role);
         user.setGym(gym);
         user.setActive(true);
+
+        // Cambio password obbligatorio al primo accesso
+        user.setMustChangePassword(true);
+        user.setPasswordChangedAt(null);
 
         return userRepository.save(user);
     }
@@ -72,7 +83,7 @@ public class UserService {
                 .orElseThrow(() -> new NotFoundException("Manager non trovato"));
 
         if (manager.getGym() == null) {
-            throw new RuntimeException("Manager senza palestra");
+            throw new ForbiddenException("Manager senza palestra");
         }
 
         return userRepository.findByGymIdAndRole_NameOrderByLastNameAscFirstNameAsc(
@@ -80,32 +91,9 @@ public class UserService {
                         "USER"
                 )
                 .stream()
-                .map(user -> {
-                    WorkoutPlan latestPlan = workoutPlanRepository
-                            .findByUserIdAndActiveTrue(user.getId())
-                            .orElse(null);
-
-                    LocalDate endDate = subscriptionService.getSubscriptionEndDate(user.getId());
-                    String subscriptionStatus = getSubscriptionStatus(endDate);
-                    boolean isActive = "ACTIVE".equals(subscriptionStatus) || "EXPIRING".equals(subscriptionStatus);
-
-                    return new UserSummaryResponse(
-                            user.getId(),
-                            user.getFirstName(),
-                            user.getLastName(),
-                            user.getEmail(),
-                            user.getGym() != null ? user.getGym().getId() : null,
-                            isActive, // 🔥 NON user.isActive()
-                            latestPlan != null,
-                            latestPlan != null ? latestPlan.getId() : null,
-                            latestPlan != null ? latestPlan.getTitle() : null,
-                            endDate,
-                            subscriptionStatus
-                    );
-                })
+                .map(this::mapToUserSummaryResponse)
                 .toList();
     }
-
 
     public UserDetailResponse getUserDetailForManager(Long userId, CustomUserPrincipal currentUser) {
         User manager = userRepository.findById(currentUser.getId())
@@ -115,34 +103,32 @@ public class UserService {
                 .orElseThrow(() -> new NotFoundException("Utente non trovato"));
 
         if (manager.getGym() == null || user.getGym() == null) {
-            throw new RuntimeException("Palestra non associata");
+            throw new ForbiddenException("Palestra non associata");
         }
 
         if (!manager.getGym().getId().equals(user.getGym().getId())) {
             throw new ForbiddenException("Non autorizzato");
         }
 
-        WorkoutPlan latestPlan = workoutPlanRepository
-                .findByUserIdAndActiveTrue(user.getId())
-                .orElse(null);
-
-        boolean isActive = subscriptionService.hasValidSubscription(user.getId());
+        WorkoutPlan latestPlan = workoutPlanRepository.findByUserIdAndActiveTrue(user.getId()).orElse(null);
+        LocalDate endDate = subscriptionService.getSubscriptionEndDate(user.getId());
+        String subscriptionStatus = getSubscriptionStatus(endDate);
+        boolean effectiveActive = isEffectivelyActive(user, subscriptionStatus);
 
         return new UserDetailResponse(
                 user.getId(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getEmail(),
+                decryptEmailSafely(user),
                 user.getRole().getName(),
                 user.getGym().getId(),
-                isActive, // 🔥 qui cambia tutto
+                effectiveActive,
                 latestPlan != null,
                 latestPlan != null ? latestPlan.getId() : null,
                 latestPlan != null ? latestPlan.getTitle() : null,
-                subscriptionService.getSubscriptionEndDate(user.getId()) // 🔥 NEW
+                endDate
         );
     }
-
 
     public PagedResponse<UserSummaryResponse> searchUsersForManager(CustomUserPrincipal currentUser,
                                                                     String search,
@@ -159,34 +145,13 @@ public class UserService {
 
         Page<User> usersPage = userRepository.searchGymUsers(
                 manager.getGym().getId(),
-                search == null ? "" : search,
+                search == null ? "" : search.trim(),
                 pageable
         );
 
         List<UserSummaryResponse> content = usersPage.getContent()
                 .stream()
-                .map(user -> {
-                    WorkoutPlan latestPlan = workoutPlanRepository
-                            .findByUserIdAndActiveTrue(user.getId())
-                            .orElse(null);
-                    LocalDate endDate = subscriptionService.getSubscriptionEndDate(user.getId());
-                    String subscriptionStatus = getSubscriptionStatus(endDate);
-                    boolean isActive = "ACTIVE".equals(subscriptionStatus) || "EXPIRING".equals(subscriptionStatus);
-
-                    return new UserSummaryResponse(
-                            user.getId(),
-                            user.getFirstName(),
-                            user.getLastName(),
-                            user.getEmail(),
-                            user.getGym() != null ? user.getGym().getId() : null,
-                            user.isActive(),
-                            latestPlan != null,
-                            latestPlan != null ? latestPlan.getId() : null,
-                            latestPlan != null ? latestPlan.getTitle() : null,
-                            endDate,
-                            subscriptionStatus
-                    );
-                })
+                .map(this::mapToUserSummaryResponse)
                 .toList();
 
         return new PagedResponse<>(
@@ -199,8 +164,8 @@ public class UserService {
     }
 
     public UserDetailResponse createUserForManager(CreateManagedUserRequest request, CustomUserPrincipal currentUser) {
+        String email = normalizeEmail(request.getEmail());
 
-        String email = request.getEmail().trim();
         User manager = userRepository.findById(currentUser.getId())
                 .orElseThrow(() -> new NotFoundException("Manager non trovato"));
 
@@ -216,14 +181,19 @@ public class UserService {
                 .orElseThrow(() -> new NotFoundException("Ruolo USER non trovato"));
 
         User user = new User();
-        user.setFirstName(request.getFirstName().trim());
-        user.setLastName(request.getLastName().trim());
-        user.setEmail(request.getEmail().trim());
-        user.setEmailHash(EmailHashUtils.sha256(request.getEmail()));
+        user.setFirstName(normalizeText(request.getFirstName()));
+        user.setLastName(normalizeText(request.getLastName()));
+        user.setEmailHash(EmailHashUtils.sha256(email));
+        user.setEmailEnc(cryptoService.encrypt(email));
+        user.setEmailBackup(email);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(userRole);
         user.setGym(manager.getGym());
         user.setActive(true);
+
+        // Cambio password obbligatorio al primo accesso
+        user.setMustChangePassword(true);
+        user.setPasswordChangedAt(null);
 
         User savedUser = userRepository.save(user);
 
@@ -231,14 +201,14 @@ public class UserService {
                 savedUser.getId(),
                 savedUser.getFirstName(),
                 savedUser.getLastName(),
-                savedUser.getEmail(),
+                decryptEmailSafely(savedUser),
                 savedUser.getRole().getName(),
                 savedUser.getGym().getId(),
                 false,
                 false,
                 null,
                 null,
-                null // subscriptionEndDate
+                null
         );
     }
 
@@ -260,13 +230,17 @@ public class UserService {
         }
 
         if (!"USER".equals(user.getRole().getName())) {
-            throw new ForbiddenException("Puoi resettare solo password di utenti finali");
+            throw new ForbiddenException("Puoi resettare solo la password degli utenti USER");
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+
+        // Dopo reset fatto dal manager, al prossimo login deve cambiarla
+        user.setMustChangePassword(true);
+        user.setPasswordChangedAt(null);
+
         userRepository.save(user);
     }
-
 
     public void updateUserStatusForManager(Long userId,
                                            UpdateUserStatusRequest request,
@@ -306,6 +280,32 @@ public class UserService {
         throw new ForbiddenException("Non autorizzato");
     }
 
+    private UserSummaryResponse mapToUserSummaryResponse(User user) {
+        WorkoutPlan latestPlan = workoutPlanRepository.findByUserIdAndActiveTrue(user.getId()).orElse(null);
+
+        LocalDate endDate = subscriptionService.getSubscriptionEndDate(user.getId());
+        String subscriptionStatus = getSubscriptionStatus(endDate);
+        boolean effectiveActive = isEffectivelyActive(user, subscriptionStatus);
+
+        return new UserSummaryResponse(
+                user.getId(),
+                user.getFirstName(),
+                user.getLastName(),
+                decryptEmailSafely(user),
+                user.getGym() != null ? user.getGym().getId() : null,
+                effectiveActive,
+                latestPlan != null,
+                latestPlan != null ? latestPlan.getId() : null,
+                latestPlan != null ? latestPlan.getTitle() : null,
+                endDate,
+                subscriptionStatus
+        );
+    }
+
+    private boolean isEffectivelyActive(User user, String subscriptionStatus) {
+        return user.isActive() && ("ACTIVE".equals(subscriptionStatus) || "EXPIRING".equals(subscriptionStatus));
+    }
+
     private String getSubscriptionStatus(LocalDate endDate) {
         if (endDate == null) {
             return "NONE";
@@ -322,5 +322,30 @@ public class UserService {
         }
 
         return "ACTIVE";
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new BadRequestException("Email obbligatoria");
+        }
+        return email.trim().toLowerCase();
+    }
+
+    private String normalizeText(String value) {
+        if (value == null || value.isBlank()) {
+            throw new BadRequestException("Campo obbligatorio");
+        }
+        return value.trim();
+    }
+
+    private String decryptEmailSafely(User user) {
+        if (user.getEmailEnc() != null && !user.getEmailEnc().isBlank()) {
+            try {
+                return cryptoService.decrypt(user.getEmailEnc());
+            } catch (Exception ignored) {
+                // fallback sotto
+            }
+        }
+        return user.getEmailBackup();
     }
 }

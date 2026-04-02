@@ -35,7 +35,7 @@ public class ManagerDashboardService {
         User manager = userRepository.findByIdWithGym(currentUser.getId())
                 .orElseThrow(() -> new NotFoundException("Utente non trovato"));
 
-        log.info("Manager trovato: id={}, email={}", manager.getId(), manager.getEmail());
+        log.info("Manager trovato: id={}, email={}", manager.getId(), manager.getEmailEnc());
 
         if (manager.getGym() == null) {
             log.error("Manager senza palestra associata. managerId={}", manager.getId());

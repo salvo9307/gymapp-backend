@@ -15,14 +15,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("select u from User u left join fetch u.gym where u.id = :id")
     Optional<User> findByIdWithGym(@Param("id") Long id);
 
-    Optional<User> findByEmailHash(String email);
+    Optional<User> findByEmailHash(String emailHash);
 
     boolean existsByEmailHash(String emailHash);
 
     @Query("select u from User u left join fetch u.role left join fetch u.gym where u.emailHash = :emailHash")
     Optional<User> findByEmailHashWithRoleAndGym(@Param("emailHash") String emailHash);
 
-    boolean existsByEmail(String email);
+    boolean existsByEmailEnc(String emailEnc);
 
     List<User> findAllByGymIdAndRole_Name(Long gymId, String roleName);
 
@@ -35,15 +35,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findFirstByGymIdAndRole_Name(Long gymId, String roleName);
 
     @Query("""
-    select u
-    from User u
-    left join fetch u.role
-    left join fetch u.gym
-    where u.email = :email
-""")
-    Optional<User> findByEmailWithRoleAndGym(@Param("email") String email);
-
-    @Query("""
         select u
         from User u
         where u.gym.id = :gymId
@@ -51,7 +42,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
           and (
                lower(u.firstName) like lower(concat('%', :search, '%'))
             or lower(u.lastName) like lower(concat('%', :search, '%'))
-            or lower(u.email) like lower(concat('%', :search, '%'))
+            or lower(u.emailBackup) like lower(concat('%', :search, '%'))
           )
     """)
     Page<User> searchGymUsers(@Param("gymId") Long gymId,

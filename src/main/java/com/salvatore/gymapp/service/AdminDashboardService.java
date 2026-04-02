@@ -69,7 +69,7 @@ public class AdminDashboardService {
                 manager != null ? manager.getId() : null,
                 manager != null ? manager.getFirstName() : null,
                 manager != null ? manager.getLastName() : null,
-                manager != null ? manager.getEmail() : null,
+                manager != null ? manager.getEmailEnc() : null,
                 subscriptionEndDate
         );
     }

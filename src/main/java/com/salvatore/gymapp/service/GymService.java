@@ -7,6 +7,7 @@ import com.salvatore.gymapp.dto.auth.UpdateGymStatusRequest;
 import com.salvatore.gymapp.entity.Gym;
 import com.salvatore.gymapp.entity.Role;
 import com.salvatore.gymapp.entity.User;
+import com.salvatore.gymapp.exception.BadRequestException;
 import com.salvatore.gymapp.exception.ConflictException;
 import com.salvatore.gymapp.exception.NotFoundException;
 import com.salvatore.gymapp.repository.GymRepository;
@@ -18,6 +19,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class GymService {
@@ -26,11 +29,12 @@ public class GymService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CryptoService cryptoService;
 
     public Gym createGym(CreateGymRequest request) {
         Gym gym = new Gym();
-        gym.setName(request.getName().trim());
-        gym.setCity(request.getCity() != null ? request.getCity().trim() : null);
+        gym.setName(normalizeRequiredText(request.getName(), "Nome palestra obbligatorio"));
+        gym.setCity(normalizeOptionalText(request.getCity()));
         gym.setActive(true);
 
         return gymRepository.save(gym);
@@ -38,7 +42,9 @@ public class GymService {
 
     @Transactional
     public Long createGymWithManager(CreateGymWithManagerRequest request) {
-        if (userRepository.existsByEmail(request.getManagerEmail().trim())) {
+        String managerEmail = normalizeEmail(request.getManagerEmail());
+
+        if (userRepository.existsByEmailHash(EmailHashUtils.sha256(managerEmail))) {
             throw new ConflictException("Email manager già presente");
         }
 
@@ -46,23 +52,26 @@ public class GymService {
                 .orElseThrow(() -> new NotFoundException("Ruolo MANAGER non trovato"));
 
         Gym gym = new Gym();
-        gym.setName(request.getGymName().trim());
-        gym.setCity(request.getCity() != null ? request.getCity().trim() : null);
+        gym.setName(normalizeRequiredText(request.getGymName(), "Nome palestra obbligatorio"));
+        gym.setCity(normalizeOptionalText(request.getCity()));
         gym.setActive(true);
 
         Gym savedGym = gymRepository.save(gym);
 
         User manager = new User();
-        String managerEmail = request.getManagerEmail().trim();
-
-        manager.setFirstName(request.getManagerFirstName().trim());
-        manager.setLastName(request.getManagerLastName().trim());
-        manager.setEmail(managerEmail);
+        manager.setFirstName(normalizeRequiredText(request.getManagerFirstName(), "Nome manager obbligatorio"));
+        manager.setLastName(normalizeRequiredText(request.getManagerLastName(), "Cognome manager obbligatorio"));
         manager.setEmailHash(EmailHashUtils.sha256(managerEmail));
+        manager.setEmailEnc(cryptoService.encrypt(managerEmail));
+        manager.setEmailBackup(managerEmail);
         manager.setPasswordHash(passwordEncoder.encode(request.getManagerPassword()));
         manager.setRole(managerRole);
         manager.setGym(savedGym);
         manager.setActive(true);
+
+        // Password temporanea nota all'admin: al primo accesso il manager deve cambiarla
+        manager.setMustChangePassword(true);
+        manager.setPasswordChangedAt(null);
 
         userRepository.save(manager);
 
@@ -85,6 +94,29 @@ public class GymService {
                 .orElseThrow(() -> new NotFoundException("Manager della palestra non trovato"));
 
         manager.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+
+        // Dopo il reset fatto dall'admin, il manager deve cambiarla al prossimo login
+        manager.setMustChangePassword(true);
+        manager.setPasswordChangedAt(null);
+
         userRepository.save(manager);
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new BadRequestException("Email obbligatoria");
+        }
+        return email.trim().toLowerCase();
+    }
+
+    private String normalizeRequiredText(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new BadRequestException(message);
+        }
+        return value.trim();
+    }
+
+    private String normalizeOptionalText(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

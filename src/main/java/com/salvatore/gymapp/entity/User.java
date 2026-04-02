@@ -23,17 +23,23 @@ public class User {
     @Column(name = "last_name", nullable = false, length = 100)
     private String lastName;
 
-    @Column(name = "email_hash", unique = true)
+    @Column(name = "email_hash", nullable = false, unique = true)
     private String emailHash;
 
-    @Column(name = "email_enc")
-    private byte[] emailEnc;
+    @Column(name = "email_enc", nullable = false)
+    private String emailEnc;
 
-    @Column(nullable = false, unique = true, length = 150)
-    private String email;
+    @Column(name = "email_backup")
+    private String emailBackup;
 
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
+
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword = false;
+
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
