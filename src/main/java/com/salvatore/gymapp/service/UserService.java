@@ -234,7 +234,7 @@ public class UserService {
                 savedUser.getEmail(),
                 savedUser.getRole().getName(),
                 savedUser.getGym().getId(),
-                false, // 🔥 nessun abbonamento
+                false,
                 false,
                 null,
                 null,
