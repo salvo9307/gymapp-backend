@@ -12,6 +12,7 @@ import com.salvatore.gymapp.exception.NotFoundException;
 import com.salvatore.gymapp.repository.GymRepository;
 import com.salvatore.gymapp.repository.RoleRepository;
 import com.salvatore.gymapp.repository.UserRepository;
+import com.salvatore.gymapp.util.EmailHashUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -52,9 +53,12 @@ public class GymService {
         Gym savedGym = gymRepository.save(gym);
 
         User manager = new User();
+        String managerEmail = request.getManagerEmail().trim();
+
         manager.setFirstName(request.getManagerFirstName().trim());
         manager.setLastName(request.getManagerLastName().trim());
-        manager.setEmail(request.getManagerEmail().trim());
+        manager.setEmail(managerEmail);
+        manager.setEmailHash(EmailHashUtils.sha256(managerEmail));
         manager.setPasswordHash(passwordEncoder.encode(request.getManagerPassword()));
         manager.setRole(managerRole);
         manager.setGym(savedGym);

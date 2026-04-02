@@ -14,6 +14,7 @@ import com.salvatore.gymapp.repository.RoleRepository;
 import com.salvatore.gymapp.repository.UserRepository;
 import com.salvatore.gymapp.repository.WorkoutPlanRepository;
 import com.salvatore.gymapp.security.CustomUserPrincipal;
+import com.salvatore.gymapp.util.EmailHashUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -37,7 +38,10 @@ public class UserService {
 
 
     public User createUser(CreateUserRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+
+        String email = request.getEmail().trim();
+
+        if (userRepository.existsByEmailHash(EmailHashUtils.sha256(email))) {
             throw new ConflictException("Email già presente");
         }
 
@@ -54,6 +58,7 @@ public class UserService {
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setEmail(request.getEmail());
+        user.setEmailHash(EmailHashUtils.sha256(request.getEmail()));
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(role);
         user.setGym(gym);
@@ -194,6 +199,8 @@ public class UserService {
     }
 
     public UserDetailResponse createUserForManager(CreateManagedUserRequest request, CustomUserPrincipal currentUser) {
+
+        String email = request.getEmail().trim();
         User manager = userRepository.findById(currentUser.getId())
                 .orElseThrow(() -> new NotFoundException("Manager non trovato"));
 
@@ -201,7 +208,7 @@ public class UserService {
             throw new ForbiddenException("Manager senza palestra associata");
         }
 
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmailHash(EmailHashUtils.sha256(email))) {
             throw new ConflictException("Email già presente");
         }
 
@@ -212,6 +219,7 @@ public class UserService {
         user.setFirstName(request.getFirstName().trim());
         user.setLastName(request.getLastName().trim());
         user.setEmail(request.getEmail().trim());
+        user.setEmailHash(EmailHashUtils.sha256(request.getEmail()));
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(userRole);
         user.setGym(manager.getGym());
