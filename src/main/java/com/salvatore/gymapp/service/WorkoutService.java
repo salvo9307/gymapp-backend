@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,6 +41,7 @@ public class WorkoutService {
     private final WorkoutDayExerciseRepository workoutDayExerciseRepository;
     private final ExerciseRepository exerciseRepository;
     private final ExerciseLogRepository exerciseLogRepository;
+    private final SubscriptionService subscriptionService;
 
     @Transactional
     public WorkoutPlan createWorkoutPlan(CreateWorkoutPlanRequest request, CustomUserPrincipal currentUser) {
@@ -239,40 +241,58 @@ public class WorkoutService {
     }
 
     private WorkoutPlanResponse buildWorkoutPlanResponse(WorkoutPlan plan, Long userId) {
-        List<WorkoutDay> days = workoutDayRepository.findByWorkoutPlanIdOrderByDayOrderAsc(plan.getId());
+
+        List<WorkoutDay> days =
+                workoutDayRepository.findByWorkoutPlanIdOrderByDayOrderAsc(plan.getId());
+
         List<WorkoutDayResponse> dayResponses = new ArrayList<>();
 
         for (WorkoutDay day : days) {
+
             List<WorkoutDayExercise> exercises =
-                    workoutDayExerciseRepository.findByWorkoutDayIdOrderByExerciseOrderAsc(day.getId());
+                    workoutDayExerciseRepository
+                            .findByWorkoutDayIdOrderByExerciseOrderAsc(day.getId());
 
             List<WorkoutExerciseResponse> exerciseResponses = new ArrayList<>();
 
             for (WorkoutDayExercise wde : exercises) {
-                BigDecimal weight = exerciseLogRepository
-                        .findByUserIdAndWorkoutDayExerciseId(userId, wde.getId())
-                        .map(ExerciseLog::getWeight)
-                        .orElse(null);
 
-                exerciseResponses.add(new WorkoutExerciseResponse(
-                        wde.getId(),
-                        wde.getExercise().getName(),
-                        wde.getExerciseOrder(),
-                        wde.getSets(),
-                        wde.getReps(),
-                        weight
-                ));
+                BigDecimal weight =
+                        exerciseLogRepository
+                                .findByUserIdAndWorkoutDayExerciseId(userId, wde.getId())
+                                .map(ExerciseLog::getWeight)
+                                .orElse(null);
+
+                exerciseResponses.add(
+                        new WorkoutExerciseResponse(
+                                wde.getId(),
+                                wde.getExercise().getName(),
+                                wde.getExerciseOrder(),
+                                wde.getSets(),
+                                wde.getReps(),
+                                weight
+                        )
+                );
             }
 
-            dayResponses.add(new WorkoutDayResponse(
-                    day.getId(),
-                    day.getDayOrder(),
-                    day.getTitle(),
-                    exerciseResponses
-            ));
+            dayResponses.add(
+                    new WorkoutDayResponse(
+                            day.getId(),
+                            day.getDayOrder(),
+                            day.getTitle(),
+                            exerciseResponses
+                    )
+            );
         }
+        LocalDate subscriptionEndDate =
+                subscriptionService.getSubscriptionEndDate(userId);
 
-        return new WorkoutPlanResponse(plan.getId(), plan.getTitle(), dayResponses);
+        return new WorkoutPlanResponse(
+                plan.getId(),
+                plan.getTitle(),
+                dayResponses,
+                subscriptionEndDate
+        );
     }
 
     private void checkCanManageUser(CustomUserPrincipal currentUser, User targetUser) {
