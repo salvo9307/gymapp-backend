@@ -18,7 +18,15 @@ public class SubscriptionService {
 
     private static final int TOLERANCE_DAYS = 2;
 
-    public void renewSubscription(Long userId, int months) {
+    public void renewSubscription(Long userId, int months, LocalDate startDate) {
+
+        if (months <= 0) {
+            throw new IllegalArgumentException("Months must be greater than zero");
+        }
+
+        if (startDate == null) {
+            throw new IllegalArgumentException("Start date is required");
+        }
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -27,28 +35,35 @@ public class SubscriptionService {
                 .findByUser_IdAndActiveTrue(userId)
                 .orElse(null);
 
-        LocalDate today = LocalDate.now();
+        LocalDate threshold = LocalDate.now().minusDays(TOLERANCE_DAYS);
 
         if (subscription == null) {
             subscription = new Subscription();
             subscription.setUser(user);
-            subscription.setStartDate(today);
-            subscription.setEndDate(today.plusMonths(months));
+            subscription.setStartDate(startDate);
+            subscription.setEndDate(startDate.plusMonths(months));
             subscription.setActive(true);
         } else {
             LocalDate currentEndDate = subscription.getEndDate();
 
-            if (currentEndDate != null && !currentEndDate.isBefore(today.minusDays(TOLERANCE_DAYS))) {
-                // ancora valido → aggiungi mesi
-                subscription.setEndDate(currentEndDate.plusMonths(months));
+            LocalDate effectiveStartDate;
+
+            if (currentEndDate != null && !currentEndDate.isBefore(threshold)) {
+                // abbonamento ancora valido o in tolleranza
+                // parte dalla data più avanti tra quella scelta e la scadenza attuale
+                effectiveStartDate = startDate.isAfter(currentEndDate) ? startDate : currentEndDate;
             } else {
-                // scaduto → riparti da oggi
-                subscription.setStartDate(today);
-                subscription.setEndDate(today.plusMonths(months));
+                // abbonamento scaduto
+                effectiveStartDate = startDate;
             }
+
+            subscription.setStartDate(effectiveStartDate);
+            subscription.setEndDate(effectiveStartDate.plusMonths(months));
+            subscription.setActive(true);
         }
 
         subscriptionRepository.save(subscription);
+        updateUserActiveStatus(user, subscription.getEndDate());
     }
 
     public boolean hasValidSubscription(Long userId) {
@@ -63,5 +78,17 @@ public class SubscriptionService {
                 .findByUser_IdAndActiveTrue(userId)
                 .map(Subscription::getEndDate)
                 .orElse(null);
+    }
+
+    private void updateUserActiveStatus(User user, LocalDate subscriptionEndDate) {
+
+        LocalDate threshold = LocalDate.now().minusDays(TOLERANCE_DAYS);
+
+        boolean isActive = subscriptionEndDate != null &&
+                !subscriptionEndDate.isBefore(threshold);
+
+        user.setActive(isActive);
+
+        userRepository.save(user);
     }
 }

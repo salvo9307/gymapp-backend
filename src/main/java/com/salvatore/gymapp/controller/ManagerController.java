@@ -107,9 +107,9 @@ public class ManagerController {
     @PutMapping("/users/{id}/renew-subscription")
     public ResponseEntity<Void> renewSubscription(
             @PathVariable Long id,
-            @RequestBody RenewSubscriptionRequest request) {
+            @Valid @RequestBody RenewSubscriptionRequest request) {
 
-        subscriptionService.renewSubscription(id, request.getMonths());
+        subscriptionService.renewSubscription(id, request.getMonths(), request.getStartDate());
         return ResponseEntity.ok().build();
     }
 
