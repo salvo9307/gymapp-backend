@@ -24,31 +24,24 @@ public class ManagerDashboardService {
     private final WorkoutPlanRepository workoutPlanRepository;
     private final ExerciseRepository exerciseRepository;
     private final SubscriptionService subscriptionService;
+    private final GymSubscriptionService gymSubscriptionService;
 
     public ManagerDashboardResponse getDashboard(CustomUserPrincipal currentUser) {
+
         log.info("=== START ManagerDashboardService.getDashboard ===");
-        log.info("currentUser id={}, email={}, role={}",
-                currentUser.getId(),
-                currentUser.getUsername(),
-                currentUser.getRole());
 
         User manager = userRepository.findByIdWithGym(currentUser.getId())
                 .orElseThrow(() -> new NotFoundException("Utente non trovato"));
 
-        log.info("Manager trovato: id={}, email={}", manager.getId(), manager.getEmailEnc());
-
         if (manager.getGym() == null) {
-            log.error("Manager senza palestra associata. managerId={}", manager.getId());
             throw new ForbiddenException("Manager senza palestra associata");
         }
 
         Long gymId = manager.getGym().getId();
         String gymName = manager.getGym().getName();
 
-        log.info("Palestra manager: gymId={}, gymName={}", gymId, gymName);
-
-        List<User> gymUsers = userRepository.findAllByGymIdAndRole_Name(gymId, "USER");
-        log.info("Utenti palestra trovati: {}", gymUsers.size());
+        List<User> gymUsers =
+                userRepository.findAllByGymIdAndRole_Name(gymId, "USER");
 
         long totalUsers = gymUsers.size();
 
@@ -59,43 +52,53 @@ public class ManagerDashboardService {
         LocalDate expiryThreshold = today.plusDays(5);
 
         for (User user : gymUsers) {
-            try {
-                boolean hasValidSubscription = subscriptionService.hasValidSubscription(user.getId());
 
-                if (hasValidSubscription) {
-                    activeSubscriptionsCount++;
-                }
+            boolean hasValidSubscription =
+                    subscriptionService.hasValidSubscription(user.getId());
 
-                LocalDate endDate = subscriptionService.getSubscriptionEndDate(user.getId());
-
-                if (endDate != null && !endDate.isBefore(today) && !endDate.isAfter(expiryThreshold)) {
-                    expiringUsersCount++;
-                }
-
-                log.info("Utente id={} | validSubscription={} | endDate={}",
-                        user.getId(),
-                        hasValidSubscription,
-                        endDate);
-
-            } catch (Exception e) {
-                log.error("Errore durante il calcolo subscription per userId={}", user.getId(), e);
-                throw e;
+            if (hasValidSubscription) {
+                activeSubscriptionsCount++;
             }
+
+            LocalDate endDate =
+                    subscriptionService.getSubscriptionEndDate(user.getId());
+
+            if (
+                    endDate != null
+                            && !endDate.isBefore(today)
+                            && !endDate.isAfter(expiryThreshold)
+            ) {
+                expiringUsersCount++;
+            }
+
+            log.info(
+                    "User {} -> valid={}, endDate={}",
+                    user.getId(),
+                    hasValidSubscription,
+                    endDate
+            );
         }
 
-        long expiredUsersCount = totalUsers - activeSubscriptionsCount;
-        long usersWithActivePlan = workoutPlanRepository.countDistinctUsersWithActivePlanByGymId(gymId);
-        long usersWithoutActivePlan = totalUsers - usersWithActivePlan;
-        long totalExercises = exerciseRepository.countByGymId(gymId);
+        long expiredUsersCount =
+                totalUsers - activeSubscriptionsCount;
 
-        log.info("activeSubscriptionsCount={}", activeSubscriptionsCount);
-        log.info("expiringUsersCount={}", expiringUsersCount);
-        log.info("expiredUsersCount={}", expiredUsersCount);
-        log.info("usersWithActivePlan={}", usersWithActivePlan);
-        log.info("usersWithoutActivePlan={}", usersWithoutActivePlan);
-        log.info("totalExercises={}", totalExercises);
+        long usersWithActivePlan =
+                workoutPlanRepository
+                        .countDistinctUsersWithActivePlanByGymId(gymId);
 
-        ManagerDashboardResponse response = new ManagerDashboardResponse(
+        long usersWithoutActivePlan =
+                totalUsers - usersWithActivePlan;
+
+        long totalExercises =
+                exerciseRepository.countByGymId(gymId);
+
+        LocalDate subscriptionEndDate =
+                gymSubscriptionService.getSubscriptionEndDate(gymId);
+
+        log.info("GYM subscriptionEndDate={}", subscriptionEndDate);
+
+
+        return new ManagerDashboardResponse(
                 gymId,
                 gymName,
                 totalUsers,
@@ -104,12 +107,8 @@ public class ManagerDashboardService {
                 totalExercises,
                 activeSubscriptionsCount,
                 expiringUsersCount,
-                expiredUsersCount
+                expiredUsersCount,
+                subscriptionEndDate
         );
-
-        log.info("Response dashboard costruita correttamente per gymId={}", gymId);
-        log.info("=== END ManagerDashboardService.getDashboard ===");
-
-        return response;
     }
 }

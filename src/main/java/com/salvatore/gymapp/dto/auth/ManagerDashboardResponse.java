@@ -3,6 +3,8 @@ package com.salvatore.gymapp.dto.auth;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.time.LocalDate;
+
 @Getter
 @AllArgsConstructor
 public class ManagerDashboardResponse {
@@ -16,4 +18,5 @@ public class ManagerDashboardResponse {
     private long activeSubscriptionsCount;
     private long expiringUsersCount;
     private long expiredUsersCount;
+    private LocalDate subscriptionEndDate;
 }
