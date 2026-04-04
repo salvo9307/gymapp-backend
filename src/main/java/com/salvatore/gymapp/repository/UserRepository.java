@@ -30,6 +30,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     long countByGymIdAndRole_Name(Long gymId, String roleName);
 
+    long countByGymIdAndRole_NameAndIsActiveTrue(Long gymId, String roleName);
+
     long countByRole_Name(String roleName);
 
     Optional<User> findFirstByGymIdAndRole_Name(Long gymId, String roleName);

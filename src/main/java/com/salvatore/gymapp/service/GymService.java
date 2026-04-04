@@ -3,6 +3,7 @@ package com.salvatore.gymapp.service;
 import com.salvatore.gymapp.dto.auth.CreateGymRequest;
 import com.salvatore.gymapp.dto.auth.CreateGymWithManagerRequest;
 import com.salvatore.gymapp.dto.auth.ResetUserPasswordRequest;
+import com.salvatore.gymapp.dto.auth.UpdateGymMaxUsersRequest;
 import com.salvatore.gymapp.dto.auth.UpdateGymStatusRequest;
 import com.salvatore.gymapp.entity.Gym;
 import com.salvatore.gymapp.entity.Role;
@@ -19,8 +20,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-
 @Service
 @RequiredArgsConstructor
 public class GymService {
@@ -35,6 +34,7 @@ public class GymService {
         Gym gym = new Gym();
         gym.setName(normalizeRequiredText(request.getName(), "Nome palestra obbligatorio"));
         gym.setCity(normalizeOptionalText(request.getCity()));
+        gym.setMaxUsers(request.getMaxUsers());
         gym.setActive(true);
 
         return gymRepository.save(gym);
@@ -54,6 +54,7 @@ public class GymService {
         Gym gym = new Gym();
         gym.setName(normalizeRequiredText(request.getGymName(), "Nome palestra obbligatorio"));
         gym.setCity(normalizeOptionalText(request.getCity()));
+        gym.setMaxUsers(request.getMaxUsers());
         gym.setActive(true);
 
         Gym savedGym = gymRepository.save(gym);
@@ -68,8 +69,6 @@ public class GymService {
         manager.setRole(managerRole);
         manager.setGym(savedGym);
         manager.setActive(true);
-
-        // Password temporanea nota all'admin: al primo accesso il manager deve cambiarla
         manager.setMustChangePassword(true);
         manager.setPasswordChangedAt(null);
 
@@ -94,12 +93,22 @@ public class GymService {
                 .orElseThrow(() -> new NotFoundException("Manager della palestra non trovato"));
 
         manager.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-
-        // Dopo il reset fatto dall'admin, il manager deve cambiarla al prossimo login
         manager.setMustChangePassword(true);
         manager.setPasswordChangedAt(null);
 
         userRepository.save(manager);
+    }
+
+    public void updateGymMaxUsers(Long gymId, UpdateGymMaxUsersRequest request) {
+        Gym gym = gymRepository.findById(gymId)
+                .orElseThrow(() -> new NotFoundException("Palestra non trovata"));
+
+        if (request.getMaxUsers() != null && request.getMaxUsers() < 0) {
+            throw new BadRequestException("Il numero massimo utenti non può essere negativo");
+        }
+
+        gym.setMaxUsers(request.getMaxUsers());
+        gymRepository.save(gym);
     }
 
     private String normalizeEmail(String email) {

@@ -173,6 +173,16 @@ public class UserService {
             throw new ForbiddenException("Manager senza palestra associata");
         }
 
+        Integer maxUsers = manager.getGym().getMaxUsers();
+        long activeUsersCount = userRepository.countByGymIdAndRole_NameAndIsActiveTrue(
+                manager.getGym().getId(),
+                "USER"
+        );
+
+        if (maxUsers != null && activeUsersCount >= maxUsers) {
+            throw new BadRequestException("Limite massimo utenti attivi raggiunto per questa palestra");
+        }
+
         if (userRepository.existsByEmailHash(EmailHashUtils.sha256(email))) {
             throw new ConflictException("Email già presente");
         }
@@ -190,8 +200,6 @@ public class UserService {
         user.setRole(userRole);
         user.setGym(manager.getGym());
         user.setActive(true);
-
-        // Cambio password obbligatorio al primo accesso
         user.setMustChangePassword(true);
         user.setPasswordChangedAt(null);
 

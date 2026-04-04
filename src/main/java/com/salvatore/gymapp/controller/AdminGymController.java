@@ -48,4 +48,11 @@ public class AdminGymController {
         gymSubscriptionService.renewSubscription(gymId, request.getMonths());
         return ResponseEntity.ok().build();
     }
+
+    @PutMapping("/{gymId}/max-users")
+    public ResponseEntity<Void> updateGymMaxUsers(@PathVariable Long gymId,
+                                                  @Valid @RequestBody UpdateGymMaxUsersRequest request) {
+        gymService.updateGymMaxUsers(gymId, request);
+        return ResponseEntity.ok().build();
+    }
 }

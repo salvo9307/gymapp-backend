@@ -22,4 +22,7 @@ public class AdminDashboardGymResponse {
     private String managerLastName;
     private String managerEmail;
     private LocalDate subscriptionEndDate;
+    private Integer maxUsers;
+    private long activeUsersCount;
+    private Integer availableSlots;
 }

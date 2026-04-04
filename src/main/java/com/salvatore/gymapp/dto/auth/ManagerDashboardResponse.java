@@ -19,4 +19,7 @@ public class ManagerDashboardResponse {
     private long expiringUsersCount;
     private long expiredUsersCount;
     private LocalDate subscriptionEndDate;
+    private Integer maxUsers;
+    private long activeUsersCount;
+    private Integer availableSlots;
 }

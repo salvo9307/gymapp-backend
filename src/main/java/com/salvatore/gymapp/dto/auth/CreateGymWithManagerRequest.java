@@ -1,6 +1,7 @@
 package com.salvatore.gymapp.dto.auth;
 
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,6 +14,9 @@ public class CreateGymWithManagerRequest {
     private String gymName;
 
     private String city;
+
+    @Min(value = 0, message = "Il numero massimo utenti non può essere negativo")
+    private Integer maxUsers;
 
     @NotBlank(message = "Il nome manager è obbligatorio")
     private String managerFirstName;

@@ -47,6 +47,7 @@ public class AdminDashboardService {
 
     private AdminDashboardGymResponse buildGymResponse(Gym gym) {
         long totalUsers = userRepository.countByGymIdAndRole_Name(gym.getId(), "USER");
+        long activeUsersCount = userRepository.countByGymIdAndRole_NameAndIsActiveTrue(gym.getId(), "USER");
         long usersWithActivePlan = workoutPlanRepository.countByUserGymIdAndActiveTrue(gym.getId());
         long usersWithoutActivePlan = totalUsers - usersWithActivePlan;
         long totalExercises = exerciseRepository.countByGymId(gym.getId());
@@ -56,6 +57,11 @@ public class AdminDashboardService {
 
         LocalDate subscriptionEndDate = gymSubscriptionService.getSubscriptionEndDate(gym.getId());
         boolean subscriptionActive = gymSubscriptionService.hasValidSubscription(gym.getId());
+
+        Integer maxUsers = gym.getMaxUsers();
+        Integer availableSlots = maxUsers == null
+                ? null
+                : Math.max(maxUsers - Math.toIntExact(activeUsersCount), 0);
 
         return new AdminDashboardGymResponse(
                 gym.getId(),
@@ -70,7 +76,10 @@ public class AdminDashboardService {
                 manager != null ? manager.getFirstName() : null,
                 manager != null ? manager.getLastName() : null,
                 manager != null ? manager.getEmailBackup() : null,
-                subscriptionEndDate
+                subscriptionEndDate,
+                maxUsers,
+                activeUsersCount,
+                availableSlots
         );
     }
 }

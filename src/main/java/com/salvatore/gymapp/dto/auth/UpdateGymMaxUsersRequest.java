@@ -1,18 +1,12 @@
 package com.salvatore.gymapp.dto.auth;
 
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class CreateGymRequest {
-
-    @NotBlank(message = "Nome obbligatorio")
-    private String name;
-
-    private String city;
+public class UpdateGymMaxUsersRequest {
 
     @Min(value = 0, message = "Il numero massimo utenti non può essere negativo")
     private Integer maxUsers;

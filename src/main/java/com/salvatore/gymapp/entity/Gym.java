@@ -22,6 +22,9 @@ public class Gym {
     @Column(length = 100)
     private String city;
 
+    @Column(name = "max_users")
+    private Integer maxUsers;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
