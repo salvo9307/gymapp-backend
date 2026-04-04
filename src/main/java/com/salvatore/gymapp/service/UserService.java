@@ -27,9 +27,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -70,8 +70,6 @@ public class UserService {
         user.setRole(role);
         user.setGym(gym);
         user.setActive(true);
-
-        // Cambio password obbligatorio al primo accesso
         user.setMustChangePassword(true);
         user.setPasswordChangedAt(null);
 
@@ -174,10 +172,17 @@ public class UserService {
         }
 
         Integer maxUsers = manager.getGym().getMaxUsers();
-        long activeUsersCount = userRepository.countByGymIdAndRole_NameAndIsActiveTrue(
-                manager.getGym().getId(),
-                "USER"
-        );
+        long activeUsersCount = 0;
+
+        List<User> gymUsers = userRepository.findAllByGymIdAndRole_Name(manager.getGym().getId(), "USER");
+        for (User existingUser : gymUsers) {
+            LocalDate endDate = subscriptionService.getSubscriptionEndDate(existingUser.getId());
+            String subscriptionStatus = getSubscriptionStatus(endDate);
+
+            if (isEffectivelyActive(existingUser, subscriptionStatus)) {
+                activeUsersCount++;
+            }
+        }
 
         if (maxUsers != null && activeUsersCount >= maxUsers) {
             throw new BadRequestException("Limite massimo utenti attivi raggiunto per questa palestra");
@@ -220,6 +225,29 @@ public class UserService {
         );
     }
 
+    @Transactional
+    public void deleteUserForManager(Long userId, CustomUserPrincipal currentUser) {
+        User manager = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Manager non trovato"));
+
+        if (manager.getGym() == null) {
+            throw new ForbiddenException("Manager senza palestra associata");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+
+        if (user.getGym() == null || !user.getGym().getId().equals(manager.getGym().getId())) {
+            throw new ForbiddenException("Non autorizzato");
+        }
+
+        if (!"USER".equals(user.getRole().getName())) {
+            throw new ForbiddenException("Puoi eliminare solo utenti USER");
+        }
+
+        userRepository.delete(user);
+    }
+
     public void resetUserPasswordForManager(Long userId,
                                             ResetUserPasswordRequest request,
                                             CustomUserPrincipal currentUser) {
@@ -242,8 +270,6 @@ public class UserService {
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-
-        // Dopo reset fatto dal manager, al prossimo login deve cambiarla
         user.setMustChangePassword(true);
         user.setPasswordChangedAt(null);
 

@@ -80,6 +80,13 @@ public class ManagerController {
         return userService.createUserForManager(request, currentUser);
     }
 
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long userId,
+                                           @AuthenticationPrincipal CustomUserPrincipal currentUser) {
+        userService.deleteUserForManager(userId, currentUser);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/users/{userId}/reset-password")
     public void resetUserPassword(@PathVariable Long userId,
                                   @Valid @RequestBody ResetUserPasswordRequest request,
@@ -112,6 +119,4 @@ public class ManagerController {
         subscriptionService.renewSubscription(id, request.getMonths(), request.getStartDate());
         return ResponseEntity.ok().build();
     }
-
-
 }
