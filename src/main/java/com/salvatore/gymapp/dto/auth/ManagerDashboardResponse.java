@@ -12,6 +12,7 @@ public class ManagerDashboardResponse {
     private Long gymId;
     private String gymName;
     private long totalUsers;
+    private long activeUsersCount;
     private long usersWithActivePlan;
     private long usersWithoutActivePlan;
     private long totalExercises;
@@ -20,6 +21,5 @@ public class ManagerDashboardResponse {
     private long expiredUsersCount;
     private LocalDate subscriptionEndDate;
     private Integer maxUsers;
-    private long activeUsersCount;
     private Integer availableSlots;
 }

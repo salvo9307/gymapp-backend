@@ -23,6 +23,7 @@ public class AdminDashboardService {
     private final ExerciseRepository exerciseRepository;
     private final WorkoutPlanRepository workoutPlanRepository;
     private final GymSubscriptionService gymSubscriptionService;
+    private final SubscriptionService subscriptionService;
 
     public AdminDashboardResponse getDashboard() {
         List<Gym> gyms = gymRepository.findAll();
@@ -46,8 +47,20 @@ public class AdminDashboardService {
     }
 
     private AdminDashboardGymResponse buildGymResponse(Gym gym) {
-        long totalUsers = userRepository.countByGymIdAndRole_Name(gym.getId(), "USER");
-        long activeUsersCount = userRepository.countByGymIdAndRole_NameAndIsActiveTrue(gym.getId(), "USER");
+        List<User> gymUsers = userRepository.findAllByGymIdAndRole_Name(gym.getId(), "USER");
+
+        long totalUsers = gymUsers.size();
+        long activeUsersCount = 0;
+
+        for (User user : gymUsers) {
+            boolean hasValidSubscription = subscriptionService.hasValidSubscription(user.getId());
+            boolean isEffectivelyActive = user.isActive() && hasValidSubscription;
+
+            if (isEffectivelyActive) {
+                activeUsersCount++;
+            }
+        }
+
         long usersWithActivePlan = workoutPlanRepository.countByUserGymIdAndActiveTrue(gym.getId());
         long usersWithoutActivePlan = totalUsers - usersWithActivePlan;
         long totalExercises = exerciseRepository.countByGymId(gym.getId());

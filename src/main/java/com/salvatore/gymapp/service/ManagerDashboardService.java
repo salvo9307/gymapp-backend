@@ -43,8 +43,8 @@ public class ManagerDashboardService {
         List<User> gymUsers = userRepository.findAllByGymIdAndRole_Name(gymId, "USER");
 
         long totalUsers = gymUsers.size();
-        long activeUsersCount = userRepository.countByGymIdAndRole_NameAndIsActiveTrue(gymId, "USER");
 
+        long activeUsersCount = 0;
         long activeSubscriptionsCount = 0;
         long expiringUsersCount = 0;
 
@@ -53,23 +53,30 @@ public class ManagerDashboardService {
 
         for (User user : gymUsers) {
             boolean hasValidSubscription = subscriptionService.hasValidSubscription(user.getId());
+            LocalDate endDate = subscriptionService.getSubscriptionEndDate(user.getId());
+
+            boolean isEffectivelyActive = user.isActive() && hasValidSubscription;
+
+            if (isEffectivelyActive) {
+                activeUsersCount++;
+            }
 
             if (hasValidSubscription) {
                 activeSubscriptionsCount++;
             }
 
-            LocalDate endDate = subscriptionService.getSubscriptionEndDate(user.getId());
-
             if (endDate != null
-                    && !endDate.isBefore(today)
+                    && !endDate.isBefore(today.minusDays(2))
                     && !endDate.isAfter(expiryThreshold)) {
                 expiringUsersCount++;
             }
 
             log.info(
-                    "User {} -> valid={}, endDate={}",
+                    "User {} -> isActive={}, validSubscription={}, effectiveActive={}, endDate={}",
                     user.getId(),
+                    user.isActive(),
                     hasValidSubscription,
+                    isEffectivelyActive,
                     endDate
             );
         }
@@ -89,11 +96,13 @@ public class ManagerDashboardService {
                 : Math.max(maxUsers - Math.toIntExact(activeUsersCount), 0);
 
         log.info("GYM subscriptionEndDate={}", subscriptionEndDate);
+        log.info("GYM maxUsers={}, activeUsersCount={}, availableSlots={}", maxUsers, activeUsersCount, availableSlots);
 
         return new ManagerDashboardResponse(
                 gymId,
                 gymName,
                 totalUsers,
+                activeUsersCount,
                 usersWithActivePlan,
                 usersWithoutActivePlan,
                 totalExercises,
@@ -102,7 +111,6 @@ public class ManagerDashboardService {
                 expiredUsersCount,
                 subscriptionEndDate,
                 maxUsers,
-                activeUsersCount,
                 availableSlots
         );
     }
