@@ -19,4 +19,6 @@ public class WorkoutExerciseRequest {
 
     @NotNull(message = "Le reps sono obbligatorie")
     private String reps;
+
+    private Integer restSeconds;
 }

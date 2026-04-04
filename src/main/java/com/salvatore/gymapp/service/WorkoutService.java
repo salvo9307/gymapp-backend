@@ -88,6 +88,7 @@ public class WorkoutService {
                 wde.setExerciseOrder(exerciseRequest.getExerciseOrder());
                 wde.setSets(exerciseRequest.getSets());
                 wde.setReps(exerciseRequest.getReps());
+                wde.setRestSeconds(exerciseRequest.getRestSeconds());
 
                 workoutDayExerciseRepository.save(wde);
             }
@@ -138,6 +139,7 @@ public class WorkoutService {
                 newExercise.setExerciseOrder(originalExercise.getExerciseOrder());
                 newExercise.setSets(originalExercise.getSets());
                 newExercise.setReps(originalExercise.getReps());
+                newExercise.setRestSeconds(originalExercise.getRestSeconds());
 
                 workoutDayExerciseRepository.save(newExercise);
             }
@@ -211,6 +213,7 @@ public class WorkoutService {
                 wde.setExerciseOrder(exerciseRequest.getExerciseOrder());
                 wde.setSets(exerciseRequest.getSets());
                 wde.setReps(exerciseRequest.getReps());
+                wde.setRestSeconds(exerciseRequest.getRestSeconds());
 
                 workoutDayExerciseRepository.save(wde);
             }
@@ -270,6 +273,7 @@ public class WorkoutService {
                                 wde.getExerciseOrder(),
                                 wde.getSets(),
                                 wde.getReps(),
+                                wde.getRestSeconds(),
                                 weight
                         )
                 );

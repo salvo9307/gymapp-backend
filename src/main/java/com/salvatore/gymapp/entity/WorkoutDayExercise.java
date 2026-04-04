@@ -30,4 +30,7 @@ public class WorkoutDayExercise {
 
     @Column(length = 50)
     private String reps;
+
+    @Column(name = "rest_seconds")
+    private Integer restSeconds;
 }

@@ -10,10 +10,12 @@ import java.math.BigDecimal;
 @Setter
 @AllArgsConstructor
 public class WorkoutExerciseResponse {
+
     private Long workoutDayExerciseId;
     private String exerciseName;
     private Integer exerciseOrder;
     private Integer sets;
     private String reps;
+    private Integer restSeconds;
     private BigDecimal weight;
 }
