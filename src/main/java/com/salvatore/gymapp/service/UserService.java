@@ -164,6 +164,7 @@ public class UserService {
         );
     }
 
+    @Transactional
     public UserDetailResponse createUserForManager(CreateManagedUserRequest request, CustomUserPrincipal currentUser) {
         log.info("[CREATE_USER_MANAGER] START principalId={}, role={}, gymIdFromToken={}, email={}",
                 currentUser.getId(),
@@ -176,37 +177,27 @@ public class UserService {
             String email = normalizeEmail(request.getEmail());
             String emailHash = EmailHashUtils.sha256(email);
 
-            log.info("[CREATE_USER_MANAGER] Email normalizzata={}, hash={}", safeEmailForLog(email), emailHash);
-
             User manager = userRepository.findById(currentUser.getId())
                     .orElseThrow(() -> new NotFoundException("Manager non trovato"));
-
-            log.info("[CREATE_USER_MANAGER] Manager trovato id={}, emailBackup={}, gymPresent={}",
-                    manager.getId(),
-                    safeEmailForLog(manager.getEmailBackup()),
-                    manager.getGym() != null
-            );
 
             if (manager.getGym() == null) {
                 throw new ForbiddenException("Manager senza palestra associata");
             }
 
-            Gym gym = manager.getGym();
+            Long gymId = manager.getGym().getId();
 
-            log.info("[CREATE_USER_MANAGER] Gym id={}, name={}, maxUsers={}",
+            Gym gym = gymRepository.findById(gymId)
+                    .orElseThrow(() -> new NotFoundException("Palestra non trovata"));
+
+            log.info("[CREATE_USER_MANAGER] Gym caricata id={}, maxUsers={}",
                     gym.getId(),
-                    gym.getName(),
                     gym.getMaxUsers()
             );
 
             Integer maxUsers = gym.getMaxUsers();
             long activeUsersCount = 0;
 
-            log.info("[CREATE_USER_MANAGER] Recupero utenti palestra gymId={}", gym.getId());
-
             List<User> gymUsers = userRepository.findAllByGymIdAndRole_Name(gym.getId(), "USER");
-
-            log.info("[CREATE_USER_MANAGER] Utenti USER trovati nella palestra={}", gymUsers.size());
 
             for (User existingUser : gymUsers) {
                 LocalDate endDate = subscriptionService.getSubscriptionEndDate(existingUser.getId());
@@ -217,7 +208,7 @@ public class UserService {
                 }
             }
 
-            log.info("[CREATE_USER_MANAGER] Conteggio utenti attivi effettivi={}, maxUsers={}",
+            log.info("[CREATE_USER_MANAGER] activeUsersCount={}, maxUsers={}",
                     activeUsersCount,
                     maxUsers
             );
@@ -226,50 +217,32 @@ public class UserService {
                 throw new BadRequestException("Limite massimo utenti attivi raggiunto per questa palestra");
             }
 
-            log.info("[CREATE_USER_MANAGER] Controllo email duplicata hash={}", emailHash);
-
             if (userRepository.existsByEmailHash(emailHash)) {
                 throw new ConflictException("Email già presente");
             }
 
-            log.info("[CREATE_USER_MANAGER] Recupero ruolo USER");
-
             Role userRole = roleRepository.findByName("USER")
                     .orElseThrow(() -> new NotFoundException("Ruolo USER non trovato"));
-
-            log.info("[CREATE_USER_MANAGER] Ruolo USER trovato id={}, name={}", userRole.getId(), userRole.getName());
-
-            log.info("[CREATE_USER_MANAGER] Encrypt email");
-
-            String encryptedEmail = cryptoService.encrypt(email);
-
-            log.info("[CREATE_USER_MANAGER] Encode password");
-
-            String encodedPassword = passwordEncoder.encode(request.getPassword());
 
             User user = new User();
             user.setFirstName(normalizeText(request.getFirstName()));
             user.setLastName(normalizeText(request.getLastName()));
             user.setEmailHash(emailHash);
-            user.setEmailEnc(encryptedEmail);
+            user.setEmailEnc(cryptoService.encrypt(email));
             user.setEmailBackup(email);
-            user.setPasswordHash(encodedPassword);
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
             user.setRole(userRole);
             user.setGym(gym);
             user.setActive(true);
             user.setMustChangePassword(true);
             user.setPasswordChangedAt(null);
 
-            log.info("[CREATE_USER_MANAGER] Salvataggio utente firstName={}, lastName={}, gymId={}, role={}",
-                    user.getFirstName(),
-                    user.getLastName(),
-                    gym.getId(),
-                    userRole.getName()
-            );
-
             User savedUser = userRepository.save(user);
 
-            log.info("[CREATE_USER_MANAGER] Utente salvato id={}", savedUser.getId());
+            log.info("[CREATE_USER_MANAGER] Utente creato correttamente id={}, gymId={}",
+                    savedUser.getId(),
+                    gym.getId()
+            );
 
             return new UserDetailResponse(
                     savedUser.getId(),
@@ -286,14 +259,14 @@ public class UserService {
             );
 
         } catch (DataAccessException ex) {
-            log.error("[CREATE_USER_MANAGER] ERRORE DB durante creazione utente. principalId={}, email={}",
+            log.error("[CREATE_USER_MANAGER] ERRORE DB principalId={}, email={}",
                     currentUser.getId(),
                     safeEmailForLog(request.getEmail()),
                     ex
             );
             throw ex;
         } catch (Exception ex) {
-            log.error("[CREATE_USER_MANAGER] ERRORE GENERICO durante creazione utente. principalId={}, email={}",
+            log.error("[CREATE_USER_MANAGER] ERRORE GENERICO principalId={}, email={}",
                     currentUser.getId(),
                     safeEmailForLog(request.getEmail()),
                     ex
