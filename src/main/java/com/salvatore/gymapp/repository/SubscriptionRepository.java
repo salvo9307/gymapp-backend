@@ -4,6 +4,7 @@ import com.salvatore.gymapp.entity.Subscription;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
@@ -13,5 +14,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     Optional<Subscription> findByUser_IdAndActiveTrue(Long userId);
 
     boolean existsByUser_IdAndActiveTrueAndEndDateGreaterThanEqual(Long userId, LocalDate date);
+
+    List<Subscription> findByActiveTrueAndEndDateIn(List<LocalDate> dates);
 
 }

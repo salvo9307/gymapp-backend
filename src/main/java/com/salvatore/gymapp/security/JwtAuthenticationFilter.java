@@ -57,22 +57,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     if (userDetails instanceof CustomUserPrincipal principal) {
                         String role = principal.getRole();
 
-                        if ("USER".equals(role)) {
-                            boolean validSubscription = subscriptionService.hasValidSubscription(principal.getId());
+                        if ("USER".equals(role) || "MANAGER".equals(role)) {
+                            Long gymId = principal.getGymId();
 
-                            if (!validSubscription) {
+                            if (gymId == null) {
                                 SecurityContextHolder.clearContext();
-                                writeForbiddenResponse(response, "Abbonamento scaduto o non presente");
+                                writeForbiddenResponse(response, "Palestra non associata");
                                 return;
                             }
-                        }
-                        if ("MANAGER".equals(role)) {
-                            boolean validGymSubscription = gymSubscriptionService
-                                    .hasValidSubscription(principal.getGymId());
+
+                            boolean validGymSubscription = gymSubscriptionService.hasValidSubscription(gymId);
 
                             if (!validGymSubscription) {
                                 SecurityContextHolder.clearContext();
                                 writeForbiddenResponse(response, "Abbonamento palestra scaduto");
+                                return;
+                            }
+                        }
+
+                        if ("USER".equals(role)) {
+                            boolean validUserSubscription = subscriptionService.hasValidSubscription(principal.getId());
+
+                            if (!validUserSubscription) {
+                                SecurityContextHolder.clearContext();
+                                writeForbiddenResponse(response, "Abbonamento utente scaduto o non presente");
                                 return;
                             }
                         }
@@ -125,6 +133,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String escapeJson(String value) {
-        return value.replace("\"", "\\\"");
+        return value == null ? "" : value.replace("\"", "\\\"");
     }
 }

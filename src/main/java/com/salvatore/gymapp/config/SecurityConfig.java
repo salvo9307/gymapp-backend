@@ -41,6 +41,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/auth/change-password").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/push-subscriptions").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/push-test").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/admin/exercises").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers(HttpMethod.GET, "/api/admin/exercises").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers(HttpMethod.GET, "/api/admin/exercises/**").hasAnyRole("ADMIN", "MANAGER")
@@ -49,7 +51,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/user/**").hasRole("USER")
                         .requestMatchers("/api/app/**").hasRole("USER")
                         .requestMatchers("/api/catalog/**").hasAnyRole("ADMIN", "MANAGER")
-                        .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
@@ -88,6 +89,8 @@ public class SecurityConfig {
 
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:4200",
+                "http://127.0.0.1:4200",
+                "http://192.168.0.104:4200",
                 "https://gymapp-frontend.caruso9307.workers.dev",
                 "https://gym-app.pro",
                 "https://www.gym-app.pro"
