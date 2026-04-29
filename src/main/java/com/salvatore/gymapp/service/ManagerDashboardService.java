@@ -1,7 +1,7 @@
 package com.salvatore.gymapp.service;
 
 import com.salvatore.gymapp.dto.auth.ManagerDashboardResponse;
-import com.salvatore.gymapp.entity.User;
+import com.salvatore.gymapp.entity.gym.User;
 import com.salvatore.gymapp.exception.ForbiddenException;
 import com.salvatore.gymapp.exception.NotFoundException;
 import com.salvatore.gymapp.repository.ExerciseRepository;

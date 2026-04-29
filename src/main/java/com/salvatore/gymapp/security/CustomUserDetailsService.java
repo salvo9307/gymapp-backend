@@ -1,6 +1,6 @@
 package com.salvatore.gymapp.security;
 
-import com.salvatore.gymapp.entity.User;
+import com.salvatore.gymapp.entity.gym.User;
 import com.salvatore.gymapp.repository.UserRepository;
 import com.salvatore.gymapp.util.EmailHashUtils;
 import lombok.RequiredArgsConstructor;

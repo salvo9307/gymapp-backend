@@ -1,6 +1,6 @@
 package com.salvatore.gymapp.repository;
 
-import com.salvatore.gymapp.entity.ExerciseLog;
+import com.salvatore.gymapp.entity.exercise.ExerciseLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

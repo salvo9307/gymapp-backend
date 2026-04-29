@@ -1,4 +1,4 @@
-package com.salvatore.gymapp.entity;
+package com.salvatore.gymapp.entity.workout;
 
 import jakarta.persistence.*;
 import lombok.Getter;

@@ -1,7 +1,7 @@
 package com.salvatore.gymapp.controller;
 
 import com.salvatore.gymapp.dto.auth.*;
-import com.salvatore.gymapp.entity.Gym;
+import com.salvatore.gymapp.entity.gym.Gym;
 import com.salvatore.gymapp.service.GymService;
 import com.salvatore.gymapp.service.GymSubscriptionService;
 import jakarta.validation.Valid;

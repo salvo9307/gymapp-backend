@@ -1,6 +1,6 @@
 package com.salvatore.gymapp.repository;
 
-import com.salvatore.gymapp.entity.GymSubscription;
+import com.salvatore.gymapp.entity.gym.GymSubscription;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;

@@ -1,7 +1,7 @@
 package com.salvatore.gymapp.controller;
 
 import com.salvatore.gymapp.dto.auth.*;
-import com.salvatore.gymapp.entity.WorkoutPlan;
+import com.salvatore.gymapp.entity.workout.WorkoutPlan;
 import com.salvatore.gymapp.security.CustomUserPrincipal;
 import com.salvatore.gymapp.service.ManagerDashboardService;
 import com.salvatore.gymapp.service.SubscriptionService;

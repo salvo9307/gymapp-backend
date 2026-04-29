@@ -3,7 +3,7 @@ package com.salvatore.gymapp.controller;
 import com.salvatore.gymapp.dto.auth.ChangePasswordRequest;
 import com.salvatore.gymapp.dto.auth.LoginRequest;
 import com.salvatore.gymapp.dto.auth.LoginResponse;
-import com.salvatore.gymapp.entity.User;
+import com.salvatore.gymapp.entity.gym.User;
 import com.salvatore.gymapp.exception.BadRequestException;
 import com.salvatore.gymapp.exception.ForbiddenException;
 import com.salvatore.gymapp.exception.NotFoundException;

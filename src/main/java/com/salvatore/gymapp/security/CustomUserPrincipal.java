@@ -1,6 +1,6 @@
 package com.salvatore.gymapp.security;
 
-import com.salvatore.gymapp.entity.User;
+import com.salvatore.gymapp.entity.gym.User;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

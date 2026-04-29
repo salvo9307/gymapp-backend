@@ -1,5 +1,6 @@
 package com.salvatore.gymapp.entity;
 
+import com.salvatore.gymapp.entity.gym.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

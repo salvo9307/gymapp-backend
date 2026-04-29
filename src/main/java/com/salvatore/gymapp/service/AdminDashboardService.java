@@ -2,8 +2,8 @@ package com.salvatore.gymapp.service;
 
 import com.salvatore.gymapp.dto.auth.AdminDashboardGymResponse;
 import com.salvatore.gymapp.dto.auth.AdminDashboardResponse;
-import com.salvatore.gymapp.entity.Gym;
-import com.salvatore.gymapp.entity.User;
+import com.salvatore.gymapp.entity.gym.Gym;
+import com.salvatore.gymapp.entity.gym.User;
 import com.salvatore.gymapp.repository.ExerciseRepository;
 import com.salvatore.gymapp.repository.GymRepository;
 import com.salvatore.gymapp.repository.UserRepository;

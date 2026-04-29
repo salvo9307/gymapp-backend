@@ -1,7 +1,7 @@
 package com.salvatore.gymapp.service;
 
 import com.salvatore.gymapp.entity.Subscription;
-import com.salvatore.gymapp.entity.User;
+import com.salvatore.gymapp.entity.gym.User;
 import com.salvatore.gymapp.repository.SubscriptionRepository;
 import com.salvatore.gymapp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

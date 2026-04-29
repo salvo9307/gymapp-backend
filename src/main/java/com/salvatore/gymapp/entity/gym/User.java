@@ -1,5 +1,6 @@
-package com.salvatore.gymapp.entity;
+package com.salvatore.gymapp.entity.gym;
 
+import com.salvatore.gymapp.entity.Role;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

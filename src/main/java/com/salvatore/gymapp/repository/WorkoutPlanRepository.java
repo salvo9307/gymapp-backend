@@ -1,6 +1,6 @@
 package com.salvatore.gymapp.repository;
 
-import com.salvatore.gymapp.entity.WorkoutPlan;
+import com.salvatore.gymapp.entity.workout.WorkoutPlan;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
