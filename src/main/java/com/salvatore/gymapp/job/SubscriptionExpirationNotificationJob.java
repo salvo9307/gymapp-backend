@@ -24,7 +24,7 @@ public class SubscriptionExpirationNotificationJob {
     private final WebPushService webPushService;
 
    // @Scheduled(cron = "0 0 9 * * *", zone = "Europe/Rome")
-   @Scheduled(fixedDelay = 60000)
+   @Scheduled(fixedDelayString = "${app.notifications.delay:86400000}")
     public void sendExpirationNotifications() {
         LocalDate today = LocalDate.now();
 
