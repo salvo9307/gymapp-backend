@@ -88,7 +88,9 @@ public class SubscriptionExpirationNotificationJob {
                         body,
                         "/icons/icon-192x192.png",
                         "/icons/icon-192x192.png",
-                        new PushNotificationPayload.Data("/app/workout")
+                        new PushNotificationPayload.Data("/app/workout"),
+                        false,
+                        new int[]{200, 100, 200}
                 )
         );
     }

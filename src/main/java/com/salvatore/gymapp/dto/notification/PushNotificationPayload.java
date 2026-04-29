@@ -17,6 +17,8 @@ public class PushNotificationPayload {
         private String icon;
         private String badge;
         private Data data;
+        private Boolean silent;
+        private int[] vibrate;
     }
 
     @Getter
