@@ -44,6 +44,12 @@ public class PushSubscription {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(name = "platform", length = 50)
+    private String platform;
+
+    @Column(name = "last_seen_at")
+    private LocalDateTime lastSeenAt;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();

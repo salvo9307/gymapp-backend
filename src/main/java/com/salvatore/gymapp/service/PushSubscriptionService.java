@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -34,11 +35,35 @@ public class PushSubscriptionService {
         subscription.setAuth(request.getAuth());
         subscription.setUser(user);
         subscription.setActive(true);
+        subscription.setPlatform(resolvePlatform(request.getEndpoint()));
+        subscription.setLastSeenAt(LocalDateTime.now());
 
         pushSubscriptionRepository.save(subscription);
     }
     @Transactional(readOnly = true)
     public List<PushSubscription> findMyActiveSubscriptions(Long userId) {
         return pushSubscriptionRepository.findByUserIdAndActiveTrue(userId);
+    }
+
+    private String resolvePlatform(String endpoint) {
+        if (endpoint == null) {
+            return "UNKNOWN";
+        }
+
+        String lowerEndpoint = endpoint.toLowerCase();
+
+        if (lowerEndpoint.contains("web.push.apple.com")) {
+            return "IOS";
+        }
+
+        if (lowerEndpoint.contains("fcm.googleapis.com")) {
+            return "ANDROID_CHROME";
+        }
+
+        if (lowerEndpoint.contains("mozilla.com")) {
+            return "FIREFOX";
+        }
+
+        return "WEB";
     }
 }

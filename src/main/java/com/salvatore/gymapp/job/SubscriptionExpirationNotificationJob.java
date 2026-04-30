@@ -2,7 +2,10 @@ package com.salvatore.gymapp.job;
 
 import com.salvatore.gymapp.dto.notification.PushNotificationPayload;
 import com.salvatore.gymapp.entity.Subscription;
+import com.salvatore.gymapp.entity.gym.User;
+import com.salvatore.gymapp.entity.notification.PushNotificationLog;
 import com.salvatore.gymapp.entity.notification.PushSubscription;
+import com.salvatore.gymapp.repository.PushNotificationLogRepository;
 import com.salvatore.gymapp.repository.PushSubscriptionRepository;
 import com.salvatore.gymapp.repository.SubscriptionRepository;
 import com.salvatore.gymapp.service.WebPushService;
@@ -10,8 +13,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Component
@@ -21,10 +26,11 @@ public class SubscriptionExpirationNotificationJob {
 
     private final SubscriptionRepository subscriptionRepository;
     private final PushSubscriptionRepository pushSubscriptionRepository;
+    private final PushNotificationLogRepository pushNotificationLogRepository;
     private final WebPushService webPushService;
 
-    @Scheduled(cron = "0 0 9 1 * *", zone = "Europe/Rome")
-   //@Scheduled(fixedDelayString = "${app.notifications.delay:86400000}")
+    @Scheduled(cron = "${app.notifications.cron:0 0 9 1 * *}", zone = "Europe/Rome")
+    @Transactional
     public void sendExpirationNotifications() {
         LocalDate today = LocalDate.now();
 
@@ -40,11 +46,18 @@ public class SubscriptionExpirationNotificationJob {
         log.info("Batch notifiche scadenza abbonamenti avviato. Subscription trovate: {}", subscriptions.size());
 
         for (Subscription subscription : subscriptions) {
-            if (subscription.getUser() == null || subscription.getUser().getId() == null) {
+            User user = subscription.getUser();
+
+            if (user == null || user.getId() == null) {
                 continue;
             }
 
-            Long userId = subscription.getUser().getId();
+            if (!user.isActive()) {
+                log.info("Notifica saltata: utente disattivato. userId={}", user.getId());
+                continue;
+            }
+
+            Long userId = user.getId();
             LocalDate endDate = subscription.getEndDate();
 
             List<PushSubscription> pushSubscriptions =
@@ -55,18 +68,68 @@ public class SubscriptionExpirationNotificationJob {
                 continue;
             }
 
+            String notificationType = resolveNotificationType(endDate, today);
             PushNotificationPayload payload = buildPayload(endDate, today);
 
             for (PushSubscription pushSubscription : pushSubscriptions) {
-                webPushService.sendNotification(pushSubscription, payload);
+                boolean alreadySent =
+                        pushNotificationLogRepository.existsByUser_IdAndSubscriptionIdAndNotificationTypeAndTargetDate(
+                                userId,
+                                pushSubscription.getId(),
+                                notificationType,
+                                endDate
+                        );
+
+                if (alreadySent) {
+                    log.info(
+                            "Notifica già inviata. userId={}, subscriptionId={}, type={}, targetDate={}",
+                            userId,
+                            pushSubscription.getId(),
+                            notificationType,
+                            endDate
+                    );
+                    continue;
+                }
+
+                boolean sent = webPushService.sendNotification(pushSubscription, payload);
+
+                if (!sent) {
+                    continue;
+                }
+
+                PushNotificationLog logEntity = new PushNotificationLog();
+                logEntity.setUser(user);
+                logEntity.setSubscriptionId(pushSubscription.getId());
+                logEntity.setNotificationType(notificationType);
+                logEntity.setTargetDate(endDate);
+
+                pushNotificationLogRepository.save(logEntity);
             }
         }
 
         log.info("Batch notifiche scadenza abbonamenti completato");
     }
 
+    private String resolveNotificationType(LocalDate endDate, LocalDate today) {
+        long daysLeft = ChronoUnit.DAYS.between(today, endDate);
+
+        if (daysLeft == 0) {
+            return "EXPIRING_TODAY";
+        }
+
+        if (daysLeft == 2) {
+            return "EXPIRING_2_DAYS";
+        }
+
+        if (daysLeft == 5) {
+            return "EXPIRING_5_DAYS";
+        }
+
+        return "EXPIRING_UNKNOWN";
+    }
+
     private PushNotificationPayload buildPayload(LocalDate endDate, LocalDate today) {
-        long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(today, endDate);
+        long daysLeft = ChronoUnit.DAYS.between(today, endDate);
 
         String title;
         String body;
